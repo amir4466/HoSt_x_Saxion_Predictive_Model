@@ -2,10 +2,10 @@ import csv
 from datetime import datetime
 
 CSV_FILE = 'Netherlands.csv'  # Change to your CSV file path
-THRESHOLD = 20
+THRESHOLD = 1.77  # Change to your desired threshold value
 
-def read_2024_entries(filename):
-    entries = []
+def read_entries_by_year(filename):
+    entries_by_year = {}
     with open(filename, newline='') as csvfile:
         reader = csv.DictReader(csvfile)
         for row in reader:
@@ -20,12 +20,17 @@ def read_2024_entries(filename):
             try:
                 value = float(price_str)
                 date = datetime.strptime(date_str, '%Y-%m-%d %H:%M:%S')
-                if date.year == 2024:
-                    entries.append(value)
+                year = date.year
+                
+                # Only include years from 2015 to 2025
+                if 2015 <= year <= 2025:
+                    if year not in entries_by_year:
+                        entries_by_year[year] = []
+                    entries_by_year[year].append(value)
             except ValueError:
                 # Skip rows with invalid data
                 continue
-    return entries
+    return entries_by_year
 
 def count_consecutive_under_threshold(entries, threshold):
     count = 0
@@ -42,7 +47,40 @@ def count_consecutive_under_threshold(entries, threshold):
             i += 1
     return count
 
+def analyze_years(start_year=2015, end_year=2025, csv_file=CSV_FILE, threshold=THRESHOLD):
+    """
+    Analyze the data for a range of years and return the results.
+    
+    Args:
+        start_year: First year to analyze
+        end_year: Last year to analyze
+        csv_file: Path to CSV file
+        threshold: Price threshold
+        
+    Returns:
+        Dictionary with years as keys and hours under threshold as values
+    """
+    entries_by_year = read_entries_by_year(csv_file)
+    results = {}
+    
+    for year in sorted(entries_by_year.keys()):
+        if start_year <= year <= end_year:
+            entries = entries_by_year[year]
+            result = count_consecutive_under_threshold(entries, threshold)
+            results[year] = result
+    
+    return results
+
 if __name__ == '__main__':
-    entries = read_2024_entries(CSV_FILE)
-    result = count_consecutive_under_threshold(entries, THRESHOLD)
-    print(f"Number of entries in 2024 with at least 2 consecutive values under {THRESHOLD}: {result}")
+    results = analyze_years()
+    
+    print(f"Analysis of hours with at least 2 consecutive values under {THRESHOLD} EUR/MWhe:")
+    print("=" * 60)
+    
+    for year, hours in results.items():
+        print(f"Year {year}: {hours} hours")
+    
+    # Calculate total across all years
+    total_hours = sum(results.values())
+    print("=" * 60)
+    print(f"Total hours (2015-2025): {total_hours}")
